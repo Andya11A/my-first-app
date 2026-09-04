@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Cookies from "js-cookie";
@@ -29,7 +29,8 @@ interface Note {
   createdAt: string;
 }
 
-export default function DocViewerPage() {
+// ========== 新组件：把原来的所有逻辑搬到这个组件里 ==========
+function DocViewerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -437,5 +438,18 @@ export default function DocViewerPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// ========== 主组件：用 Suspense 包裹 ==========
+export default function DocViewerPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">加载中...</p>
+      </div>
+    }>
+      <DocViewerContent />
+    </Suspense>
   );
 }
