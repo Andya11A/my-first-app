@@ -1,0 +1,52 @@
+{
+  "name": "my-first-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "test": "vitest run",
+    "calc-engine": "cd calc_engine && c:/Users/zhb15/.local/python312/python.exe -m uvicorn main:app --port 8100",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed-full.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-libsql": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcryptjs": "^3.0.3",
+    "docx": "^9.7.1",
+    "fabric": "^7.4.0",
+    "jose": "^6.2.10",
+    "js-cookie": "^3.0.8",
+    "mammoth": "^1.12.2",
+    "multer": "^2.3.0",
+    "next": "16.3.3",
+    "pdf-parse": "^1.1.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "xlsx": "^0.18.5",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/fabric": "^5.3.11",
+    "@types/js-cookie": "^3.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "prisma": "^7.10.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  }
+}

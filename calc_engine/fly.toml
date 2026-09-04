@@ -1,0 +1,19 @@
+# fly.io 部署配置：cd calc_engine && flyctl launch --no-deploy && flyctl deploy
+app = "lab-calc-engine"   # 需改为全局唯一名称
+primary_region = "iad"    # 美东，与 Vercel 默认区接近
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

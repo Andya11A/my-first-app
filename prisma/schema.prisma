@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model LabType {
+  id                    Int       @id @default(autoincrement())
+  typeName              String    @unique
+  cleanLevelDefault     String
+  pressureRequirement   String
+  tempHumidity          String
+  airChangesPerHour     Int
+  illuminationLux       Int
+  notes                 String?
+  equipmentTemplates    EquipmentTemplate[]
+  constructionFactors   ConstructionFactor[]
+  projects              Project[]
+  importHistories       ImportHistory[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model EquipmentTemplate {
+  id            Int      @id @default(autoincrement())
+  labTypeId     Int
+  labType       LabType  @relation(fields: [labTypeId], references: [id])
+  equipmentName String
+  specification String
+  unit          String
+  qtyPer100Area Decimal
+  baseUnitPrice Decimal
+  isRequired    Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ConstructionFactor {
+  id            Int      @id @default(autoincrement())
+  labTypeId     Int
+  labType       LabType  @relation(fields: [labTypeId], references: [id])
+  itemName      String
+  unit          String
+  factorPerArea Decimal
+  baseUnitPrice Decimal
+  category      String
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PriceLevel {
+  id                      Int      @id @default(autoincrement())
+  levelName               String   @unique
+  equipmentMultiplier     Decimal
+  constructionMultiplier  Decimal
+  managementFeeRate       Decimal
+  profitRate              Decimal
+  isDefault               Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Project {
+  id                  Int      @id @default(autoincrement())
+  projectName         String
+  labTypeId           Int
+  labType             LabType  @relation(fields: [labTypeId], references: [id])
+  area                Decimal
+  cleanLevel          String
+  budgetLevel         String
+  specialRequirements String?
+  generatedJson       String
+  preciseQuoteJson    String?  // 精确报价结果JSON快照
+  status              String   @default("draft") // draft / pending / approved / rejected / archived
+  createdById         Int?
+  createdBy           User?    @relation(fields: [createdById], references: [id])
+  approvals           Approval[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model User {
+  id            Int        @id @default(autoincrement())
+  username      String     @unique
+  passwordHash  String
+  realName      String
+  email         String?
+  phone         String?
+  avatar        String?
+  roleId        Int
+  role          Role       @relation(fields: [roleId], references: [id])
+  status        String     @default("active") // active / disabled
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  projects      Project[]
+  approvals     Approval[]
+  messages      Message[]
+  importHistories ImportHistory[]
+  knowledgeFiles  KnowledgeFile[]
+  knowledgeDocs   KnowledgeDoc[]
+  notes         DocNote[]
+  operationLogs OperationLog[]
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  roleName    String   @unique
+  roleCode    String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  menus       String   // JSON字符串，可访问菜单列表
+  dataScope   String   @default("self") // all / dept / self
+  status      String   @default("active")
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Approval {
+  id         Int       @id @default(autoincrement())
+  projectId  Int
+  project    Project   @relation(fields: [projectId], references: [id])
+  approverId Int       // 审批人 User id
+  approver   User      @relation(fields: [approverId], references: [id])
+  status     String    @default("pending") // pending / approved / rejected
+  comment    String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  userId    Int      // 接收人
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  content   String
+  type      String   @default("system") // system / approval / project
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ImportHistory {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  fileName       String
+  fileType       String   // excel / word / pdf
+  importMode     String   @default("merge") // merge / overwrite
+  labTypeId      Int?
+  labType        LabType? @relation(fields: [labTypeId], references: [id])
+  equipmentCount Int      @default(0)
+  factorCount    Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+// 知识喂养：上传的资料文件（管理员直入库，客户需审核）
+model KnowledgeFile {
+  id           Int              @id @default(autoincrement())
+  title        String
+  fileName     String
+  filePath     String
+  fileType     String // xlsx / xls / csv / docx / pdf / txt / md
+  fileSize     Int
+  source       String // admin / customer
+  category     String @default("其他") // 规范标准 / 设备价格 / 项目案例 / 行业数据 / 其他
+  note         String?
+  status       String           @default("pending") // pending / approved / rejected
+  uploaderId   Int
+  uploader     User             @relation(fields: [uploaderId], references: [id])
+  uploaderName String
+  chunkCount   Int              @default(0)
+  parseSummary String?
+  parseError   String?
+  reviewedById Int?
+  reviewedAt   DateTime?
+  reviewNote   String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  chunks       KnowledgeChunk[]
+}
+
+// 知识喂养：解析出的文本块（喂给智能建议引擎的最小检索单元）
+model KnowledgeChunk {
+  id         Int            @id @default(autoincrement())
+  fileId     Int?
+  file       KnowledgeFile? @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  seq        Int
+  content    String
+  keywords   String? // 空格分隔关键词，用于检索
+  status     String         @default("pending") // pending / approved / rejected
+  docId      Int?
+  doc        KnowledgeDoc?  @relation(fields: [docId], references: [id], onDelete: Cascade)
+  chunkIndex Int?
+  title      String?
+  createdAt  DateTime       @default(now())
+}
+
+// AI 知识助手：知识文档
+model KnowledgeDoc {
+  id           Int              @id @default(autoincrement())
+  title        String
+  docType      String           @default("技术资料")
+  fileName     String           @default("")
+  fileSize     Int              @default(0)
+  content      String           @default("")
+  chunkCount   Int              @default(0)
+  extractResults String?   // JSON字符串，保存提炼结果
+  originalFileName String?  // 原始文件名（上传时保存）
+  originalFilePath String?  // 原始文件存储路径
+  uploadedById Int
+  uploadedBy   User             @relation(fields: [uploadedById], references: [id])
+  chunks       KnowledgeChunk[]
+  notes        DocNote[]
+  createdAt    DateTime         @default(now())
+}
+
+model DocNote {
+  id            Int       @id @default(autoincrement())
+  docId         Int
+  doc           KnowledgeDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  selectedText  String    // 选中的原文
+  noteContent   String    // 笔记内容
+  createdById   Int
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model OperationLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  action      String    // 操作类型：create/update/delete/upload/login/logout
+  targetType  String    // 操作对象：project/document/note/equipment/user
+  targetId    Int?      // 对象ID
+  detail      String?   // 操作详情
+  createdAt   DateTime  @default(now())
+}
+
+// AI 助手：知识节点（七层结构化存储，L0~L7）
+model KnowledgeNode {
+  id           Int      @id @default(autoincrement())
+  nodeCode     String   @unique // 如 KN-半导体-001
+  moduleCode   String?  // 对应 KnowledgeModule.moduleCode（地图层关联）
+  industry     String   // 行业（半导体/医药/电池...）
+  facilityType String   // 形态（研发实验室/检测实验室/中试线/生产线...）
+  environment  String   // 环境参数关键词（ISO4/微振动/AMC/防静电/低露点...）
+  title        String   // 节点标题
+  summary      String   // L0 坐标确认（这个节点回答什么问题）
+  regulations  String   // L1 规范清单（JSON数组字符串）
+  chapters     String   // L2 章节定位（JSON数组字符串）
+  clauses      String   // L3 条文内容（文本，含待核标注）
+  parameters   String   // L4 设计参数（JSON数组字符串）
+  logic        String   // L5 工艺逻辑（文本）
+  crossLinks   String   // L6 组合关系（JSON数组字符串）
+  lifecycle    String   // L7 生命周期（JSON数组字符串）
+  status       String   @default("draft") // draft/review/verified
+  source       String   @default("system") // system=系统生成 / auto=问答自动沉淀
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// 标准版本台账（防止AI凭训练记忆输出旧版/废止标准）
+model StandardVersion {
+  id             Int      @id @default(autoincrement())
+  standardNo     String   @unique // 如 GB 50073
+  name           String
+  currentVersion String   // 如 2013
+  status         String   @default("current") // current/superseded/unknown
+  supersededBy   String?  // 替代它的标准号
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// 知识地图索引层：11大模块 → 子主题 → 国标清单
+model KnowledgeModule {
+  id          Int      @id @default(autoincrement())
+  moduleCode  String   // 如 M-洁净技术（同一模块多个子主题共用，非唯一）
+  moduleName  String   // 专业模块名（11大模块之一）
+  subTopic    String   @unique // 子主题名
+  regulations String   // 对应国标清单（JSON数组字符串）
+  status      String   @default("active") // active/superseded
+  nodeCount   Int      @default(0) // 该子主题下已钻的七层节点数
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([moduleCode])
+}
+
+// ================= 工程知识体系扩展（2026-09-04） =================
+
+// 标准库：行业专项 > 主要 > 配套 优先级排序（搜索/速查表用）
+model Standard {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  type        String    // 主要 / 行业专项 / 配套
+  priority    Int       @default(0) // 数值越大越优先，专项>主要>配套
+  industry    String?   // 适用行业（逗号分隔）
+  scope       String?   // 适用范围
+  status      String    @default("现行") // 现行/废止/待修订
+  keywords    String?   // 搜索用关键词
+  crossRefs   Json?     // 关联标准代码列表
+  issueDate   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("standards")
+}
+
+// 行业选型参数：十二大行业 × 系统分类 × 参数
+model IndustryConfig {
+  id             Int      @id @default(autoincrement())
+  industry       String   // 行业名称（如 "数据中心/IDC"）
+  systemCategory String   // 系统分类（如 "暖通空调"）
+  paramKey       String   // 参数名称
+  paramValue     String   // 参数值/推荐值
+  unit           String?  // 单位
+  reference      String?  // 参考来源（标准或手册）
+  priority       Int      @default(0) // 排序权重
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([industry])
+  @@map("industry_configs")
+}
+
+// 施工工艺：工序 → 步骤/质量标准/验收要点/安全交底
+model ProcessFlow {
+  id          Int      @id @default(autoincrement())
+  nodeCode    String?  // 关联知识节点代码（可选）
+  processName String   // 工序名称（如 "彩钢板安装"）
+  category    String   // 类别（装饰/暖通/电气/消防等）
+  steps       Json?    // 施工步骤（数组字符串）
+  qualityStd  String?  // 质量标准
+  acceptance  String?  // 验收要点
+  safetyNotes String?  // 安全技术交底
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@map("process_flows")
+}
